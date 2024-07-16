@@ -17,24 +17,33 @@
 
 #define APP_CLASS L"ApplicationClass"
 
-class Application
+namespace Apollo
 {
-    public:
-        Application();
-        Application(const char* name, int width, int height);
-        Application(const char* name, int width, int height, unsigned int flags);
-        Application(const wchar_t* name, int width, int height, unsigned int flags);
+    class Graphics;
 
-        ~Application();
+    class Application
+    {
+        public:
+            Application();
+            Application(const char* name, int width, int height);
+            Application(const char* name, int width, int height, unsigned int flags);
+            Application(const wchar_t* name, int width, int height, unsigned int flags);
 
-        void Run();
+            ~Application();
 
-    private:
-    #ifdef WINDOWS
-        HWND m_window;
-    #endif
-    private:
-    #ifdef WINDOWS
-        static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    #endif
-};
+            void Run();
+
+            virtual void Update();
+            virtual void Draw();
+
+        private:
+        #ifdef WINDOWS
+            HWND m_window;
+        #endif
+        private:
+        #ifdef WINDOWS
+            static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+        #endif
+            friend class Graphics;
+    };
+}
