@@ -1,7 +1,8 @@
 #include "Application.h"
 #include "Graphics.h"
 
-class ApolloApp : public Apollo::Application {
+class ApolloApp : public Apollo::Application 
+{
     public:
         ApolloApp(const char* name, int width, int height) : Apollo::Application(name, width, height) {}
 
@@ -9,12 +10,18 @@ class ApolloApp : public Apollo::Application {
 
         void Update() override 
         {
-        
+            
         }
 
-        void Draw() override {
+        void Draw() override 
+        {
             Apollo::Graphics graphics(*this);
-            graphics.DrawText("Hello Apollo!", 10, 10, 200, 30);
+
+            graphics.Clear(Apollo::Color(12, 12, 24));
+            
+            graphics.DrawFillRectangle(5, graphics.m_height - 25, graphics.m_width - 10, 20, Apollo::Color(127, 127, 127));
+
+            graphics.Present();
         }
 };
 

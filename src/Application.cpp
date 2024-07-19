@@ -106,6 +106,7 @@ namespace Apollo
             }
 
             Update();
+            InvalidateRect(m_window, NULL, false);
         }
         #endif
     }
@@ -118,6 +119,15 @@ namespace Apollo
     void Application::Draw()
     {
 
+    }
+
+    Vector2D<int> Application::GetMousePosition()
+    {
+        POINT mousePos;
+        GetCursorPos(&mousePos);
+        ScreenToClient(m_window, &mousePos);
+
+        return Vector2D<int>(mousePos.x, mousePos.y);
     }
 
     #ifdef WINDOWS

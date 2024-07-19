@@ -14,6 +14,7 @@
 #endif
 
 #include <string>
+#include <Vector2d.h>
 
 #define APP_CLASS L"ApplicationClass"
 
@@ -36,7 +37,9 @@ namespace Apollo
             virtual void Update();
             virtual void Draw();
 
-        private:
+            Vector2D<int> GetMousePosition();
+
+        protected:
         #ifdef WINDOWS
             HWND m_window;
         #endif
