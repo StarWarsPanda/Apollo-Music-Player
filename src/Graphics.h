@@ -3,8 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <string>
+#include <unordered_map>
+#include <iostream>
+#include <fstream>
 
 #include "Application.h"
+#include "File.h"
 
 #undef max
 #undef min
@@ -18,40 +23,74 @@
 
 namespace Apollo
 {
-    class Color 
-    {
-        public:
-            union 
-            {
-                struct 
-                {
-                    uint8_t r;
-                    uint8_t g;
-                    uint8_t b;
-                    uint8_t a;
-                };
-                uint32_t m_value;
-            };
-        public:
-            Color();
-            Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255);
-            explicit Color(uint32_t val);
-
-            double hue() const;
-            double saturation() const;
-            double value() const;
-            double luminance() const;
-
-            static const Color Black;
-            static const Color Red;
-            static const Color Blue;
-            static const Color Green;
-            static const Color Yellow;
-            static const Color White;
-    };
-
 	class Graphics
 	{
+        public:
+            class Rectangle
+            {
+                public:
+                    Rectangle(int x, int y, int width, int height) : x(x), y(y), width(width), height(height) {}
+                    bool Inside(int x, int y);
+
+                public:
+                    unsigned int x, y, width, height;
+            };
+            class Color
+            {
+                public:
+                    union
+                    {
+                        struct
+                        {
+                            uint8_t a;
+                            uint8_t r;
+                            uint8_t g;
+                            uint8_t b;
+                        };
+                        uint32_t m_value;
+                    };
+                public:
+                    Color();
+                    Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255);
+                    Color(uint32_t val);
+
+                    operator uint32_t() const { return m_value; }
+
+                    double hue() const;
+                    double saturation() const;
+                    double value() const;
+                    double luminance() const;
+
+                    static const Color Black;
+                    static const Color Red;
+                    static const Color Blue;
+                    static const Color Green;
+                    static const Color Yellow;
+                    static const Color White;
+            };
+
+            class Image
+            {
+                public:
+                    Image();
+                    Image(uint16_t width, uint16_t height);
+                    Image(std::string filename);
+                    Image(std::wstring filename);
+                    ~Image();
+
+                    void initMP3ID3V2(const std::string& filename);
+
+                    Color getPixelColor(int x, int y);
+                    Color setPixelColor(int x, int y, Color color); //returns the previous color of the pixel
+
+                    uint16_t width() const { return m_width; }
+                    uint16_t height() const { return m_height; }
+                    Apollo::Graphics::Color* data() { return m_data.data(); }
+                private:
+                    uint16_t m_width, m_height;
+                    std::vector<Color> m_data;
+            };
+
         public:
             int m_width;
             int m_height;
@@ -93,8 +132,14 @@ namespace Apollo
 
 			void DrawText(const char* string, int x, int y, int width, int height, Color color);
 
+            void DrawImage(Image& image, int x, int y, int width, int height);
+
+            double DrawSlider(double& value, double valMin, double valMax, int x, int y, int width, int height, Color foreColor, Color backColor);
+
             /* Show the buffered drawing to the screen to avoid FLICKER! */
             void Present();
+
+            static bool RectanglePointCollision(int rectX, int rectY, int rectWidth, int rectHeight, int x, int y);
 
 		private:
 			Application& m_app;

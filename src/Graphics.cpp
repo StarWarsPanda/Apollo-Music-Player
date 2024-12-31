@@ -1,11 +1,16 @@
 #include "Graphics.h"
 
-const Apollo::Color Apollo::Color::Black = Color(0, 0, 0);
-const Apollo::Color Apollo::Color::Red = Color(255, 0, 0);
-const Apollo::Color Apollo::Color::Blue = Color(0, 0, 255);
-const Apollo::Color Apollo::Color::Green = Color(0, 255, 0);
-const Apollo::Color Apollo::Color::Yellow = Color(255, 255, 0);
-const Apollo::Color Apollo::Color::White = Color(255, 255, 255);
+#include <iostream>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "external/stb_image.h"
+
+const Apollo::Graphics::Color Apollo::Graphics::Color::Black = Color(0, 0, 0);
+const Apollo::Graphics::Color Apollo::Graphics::Color::Red = Color(255, 0, 0);
+const Apollo::Graphics::Color Apollo::Graphics::Color::Blue = Color(0, 0, 255);
+const Apollo::Graphics::Color Apollo::Graphics::Color::Green = Color(0, 255, 0);
+const Apollo::Graphics::Color Apollo::Graphics::Color::Yellow = Color(255, 255, 0);
+const Apollo::Graphics::Color Apollo::Graphics::Color::White = Color(255, 255, 255);
 
 Apollo::Graphics::Graphics(Application& app)
 	:m_app(app)
@@ -43,6 +48,7 @@ void Apollo::Graphics::Clear(Color color)
 	HBRUSH brush = CreateSolidBrush(RGB(color.r, color.g, color.b));
 	RECT rect = { 0, 0, m_width, m_height };
 	FillRect(m_hdcMem, &rect, brush);
+	
 	DeleteObject(brush);
 	#endif
 }
@@ -307,6 +313,66 @@ void Apollo::Graphics::DrawFillPolygon(std::vector<std::pair<int, int>> points, 
 	#endif
 }
 
+bool Apollo::Graphics::RectanglePointCollision(int rectX, int rectY, int rectWidth, int rectHeight, int x, int y)
+{
+	double invW = 2.0 / rectWidth;
+	double invH = 2.0 / rectHeight;
+	double wP = invW * (x - rectX);
+	double hP = invH * (y - rectY);
+
+	return std::abs(wP + hP - 2.0) + std::abs(hP - wP) <= 2.0;
+}
+
+double Apollo::Graphics::DrawSlider(double& value, double valMin, double valMax, int x, int y, int width, int height, Color foreColor, Color backColor)
+{
+	Vector2D<int> mousePos = m_app.GetMousePosition();
+	
+	if (m_app.IsMouseButtonDown(MouseButton::LeftButton) && RectanglePointCollision(x, y, width, height, mousePos.x, mousePos.y))
+	{
+		value = maprange(mousePos.y, y, y + height, valMin, valMax);
+	}
+
+	DrawFillRectangle(x, y, width, height, backColor);
+	DrawFillRectangle(x, maprange(value, valMin, valMax, y, y + height - 3), width, 3, foreColor);
+
+	return 0.0;
+}
+
+void Apollo::Graphics::DrawImage(Image& image, int x, int y, int width, int height)
+{
+	#ifdef WINDOWS
+	BITMAPINFO bmi = { 0 };
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = image.width();
+	bmi.bmiHeader.biHeight = -static_cast<LONG>(image.height()); // Top-down DIB
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+
+	void* pBits;
+	HBITMAP hBitmap = CreateDIBSection(m_hdcMem, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+	if (!hBitmap) return;
+
+	/* ARGB --> BGRA */
+	for (int i = 0; i < image.width() * image.height(); ++i)
+	{
+		((uint32_t*)pBits)[i] = ((image.data()[i] & 0x000000ff) << 16) | // b
+								((image.data()[i] & 0x0000ff00) <<  0) | // g
+								((image.data()[i] & 0x00ff0000) >> 16) | // r
+								((image.data()[i] & 0xff000000) >>  0);  // a
+	}
+
+	HDC hdcMem = CreateCompatibleDC(m_hdcMem);
+	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
+
+	StretchBlt(m_hdcMem, x, y, width, height, hdcMem, 0, 0, image.width(), image.height(), SRCCOPY);
+
+	SelectObject(hdcMem, hOldBitmap);
+	DeleteDC(hdcMem);
+	DeleteObject(hBitmap);
+	#endif
+}
+
 void Apollo::Graphics::Present()
 {
 	#ifdef WINDOWS
@@ -338,11 +404,11 @@ void Apollo::Graphics::DrawText(const char* string, int x, int y, int width, int
 
 }
 
-Apollo::Color::Color() :r(0), g(0), b(0), a(255) {}
-Apollo::Color::Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha) :r(red), g(green), b(blue), a(alpha) {}
-Apollo::Color::Color(uint32_t val) :m_value(val) {}
+Apollo::Graphics::Color::Color() :r(0), g(0), b(0), a(255) {}
+Apollo::Graphics::Color::Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha) :r(red), g(green), b(blue), a(alpha) {}
+Apollo::Graphics::Color::Color(uint32_t val) :m_value(val) {}
 
-double Apollo::Color::hue() const
+double Apollo::Graphics::Color::hue() const
 {
 	double max = std::max({ r,g,b });
 	double min = std::max({ r,g,b });
@@ -367,7 +433,7 @@ double Apollo::Color::hue() const
 	return std::fmod(60.0 * hue * diff + 240.0, 360.0);
 }
 
-double Apollo::Color::saturation() const
+double Apollo::Graphics::Color::saturation() const
 {
 	double max = std::max({ r,g,b });
 	double min = std::min({ r,g,b });
@@ -377,14 +443,134 @@ double Apollo::Color::saturation() const
 	return 100.0 - ((min / max) * 100.0);
 }
 
-double Apollo::Color::value() const
+double Apollo::Graphics::Color::value() const
 {
 	/* 0.392156862745 = 100/255 */
 	return std::max({ r,g,b }) * 0.392156862745;
 }
 
-double Apollo::Color::luminance() const
+double Apollo::Graphics::Color::luminance() const
 {
 	/* Weighted luminance based on perceptual values */
 	return 0.1133333333333 * r + 0.226274509804 * g + 0.0525490196078 * b;
+}
+
+Apollo::Graphics::Image::Image() :m_width(0), m_height(0) {}
+
+Apollo::Graphics::Image::Image(uint16_t width, uint16_t height)
+	:m_width(width), m_height(height)
+{
+	m_data.resize(m_width * m_height);
+}
+
+Apollo::Graphics::Image::Image(std::string filename)
+{
+	int width, height, channels;
+	uint8_t* imageData = stbi_load(filename.c_str(), &width, &height, &channels, 4);
+
+	if (imageData)
+	{
+		m_width = width;
+		m_height = height;
+
+		m_data.resize(m_width * m_height);
+
+		std::memcpy(data(), imageData, m_width * m_height * 4);
+
+		stbi_image_free(imageData);
+
+		return;
+	}
+
+	std::string fileExtension = filename.substr(filename.find_last_of(".") + 1, filename.length() - filename.find_last_of(".") - 1);
+
+	if (fileExtension == "mp3")
+	{
+		initMP3ID3V2(filename);
+	}
+
+	m_width = 0;
+	m_height = 0;
+}
+
+Apollo::Graphics::Image::Image(std::wstring filename)
+{
+	FILE* file = nullptr;
+
+	#ifdef WINDOWS
+
+	_wfopen_s(&file, filename.c_str(), L"rb");
+
+	#endif
+
+
+	int channels;
+	uint8_t* imageData = stbi_load_from_file(file, (int*)&m_width, (int*)&m_height, &channels, 4);
+
+	if (file) fclose(file);
+
+	if (imageData)
+	{
+		m_data.resize(m_width * m_height);
+
+		std::memcpy(data(), imageData, m_width * m_height * 4);
+
+		stbi_image_free(imageData);
+
+		return;
+	}
+
+	m_width = 0;
+	m_height = 0;
+}
+
+Apollo::Graphics::Image::~Image(){}
+
+void Apollo::Graphics::Image::initMP3ID3V2(const std::string& filename)
+{
+	std::ifstream file(filename, std::ios::binary);
+
+	if (!file.is_open())
+	{
+		return;
+	}
+
+	std::vector<byte> fileBuffer(std::istreambuf_iterator<char>(file), {});
+	file.close();
+
+	std::vector<byte> albumImageStart = { 0x41, 0x50, 0x49, 0x43 }; // APIC
+
+	auto find = std::search(fileBuffer.begin(), fileBuffer.end(), albumImageStart.begin(), albumImageStart.end());
+
+	if (find != fileBuffer.end())
+	{
+		auto distance = std::distance(fileBuffer.begin(), find);
+	}
+}
+
+Apollo::Graphics::Color Apollo::Graphics::Image::getPixelColor(int x, int y)
+{
+	if (x < 0 || x >= m_width || y < 0 || y >= m_height) 
+	{
+		return Color();
+	}
+
+	return m_data[y * m_width + x];
+}
+
+Apollo::Graphics::Color Apollo::Graphics::Image::setPixelColor(int x, int y, Color color)
+{
+	if (x < 0 || x >= m_width || y < 0 || y >= m_height)
+	{
+		return Color();
+	}
+
+	Color previousColor = m_data[y * m_width + x];
+	m_data[y * m_width + x] = color;
+	return previousColor;
+}
+
+bool Apollo::Graphics::Rectangle::Inside(int x, int y)
+{
+	return Apollo::Graphics::RectanglePointCollision(this->x, this->y, this->width, this->height, x, y);
 }

@@ -1,9 +1,5 @@
 #pragma once
 
-#define abs(x) (((x) < 0) ? (-(x)) : (x))
-#define max(a,b) ((a) < (b) ? (b) : (a))
-#define min(a,b) ((a) > (b) ? (b) : (a))
-
 #define MAX_ITERATIONS 10
 
 template <typename T>
@@ -141,7 +137,7 @@ T Vector2D<T>::sqrt(T x)
     {
         T y_n = (y + (x / y)) / ((T)2);
 
-        if (abs(y_n - y) <= 0)
+        if ((((y_n - y) < 0) ? (-(y_n - y)) : (y_n - y)) <= 0)
         {
             return y_n;
         }
